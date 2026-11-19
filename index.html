@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestor de Ventas y Cobranzas con IA</title>
+<style>
+:root{--r:14px;--ok:#34d399;--danger:#f87171;--accent:#22d3ee;--warn:#fbbf24}
+html[data-theme="dark"]{
+  --bg:#080d17;--bg2:#0c1322;--panel:#111a2e;--panel2:#16223a;
+  --border:rgba(255,255,255,.08);--text:#e8eefc;--muted:#8ea2c4;
+  --shadow:0 12px 32px rgba(0,0,0,.45);
+}
+html[data-theme="light"]{
+  --bg:#eef2f9;--bg2:#e6ecf7;--panel:#fff;--panel2:#f3f7fd;
+  --border:rgba(15,23,42,.10);--text:#0b1526;--muted:#5b6b85;
+  --shadow:0 12px 28px rgba(15,23,42,.10);
+  --ok:#059669;--danger:#dc2626;--accent:#0891b2;--warn:#d97706;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:radial-gradient(1100px 560px at 12% -10%,rgba(34,211,238,.10),transparent 60%),radial-gradient(900px 500px at 95% 0%,rgba(52,211,153,.08),transparent 55%),var(--bg);
+  color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+}
+.app{max-width:1240px;margin:0 auto;padding:22px 18px 20px;width:100%;flex:1}
+
+/* ---------- HEADER (Título y subtítulo más grandes) ---------- */
+.topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:22px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px;background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(52,211,153,.18));border:1px solid var(--border);box-shadow:0 6px 18px rgba(34,211,238,.15)}
+.brand h1{margin:0;font-size:26px;letter-spacing:-.5px}
+.sub{margin:4px 0 0;font-size:14.5px;color:var(--muted)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sello{font-size:11px;color:var(--muted);margin-right:4px}
+
+/* ---------- BOTONES / INPUTS ---------- */
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:9px 14px;transition:.18s;font-size:13.5px}
+button:hover{transform:translateY(-1px);border-color:rgba(34,211,238,.55)}
+button:active{transform:translateY(0)}
+button.primary{background:linear-gradient(135deg,#22d3ee,#34d399);color:#04121c;border:none;font-weight:700}
+button.danger{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.4);color:var(--danger)}
+button.ghost{background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+input,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font:inherit;font-size:13.5px;outline:none;transition:.15s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+label{display:block;font-size:12px;color:var(--muted);font-weight:600}
+label input,label select{margin-top:5px}
+.currency-hint{font-size:10.5px;color:var(--accent);margin-top:4px;display:block;font-weight:normal}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:13px;margin-bottom:20px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow)}
+.kpi small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:7px}
+.kpi b{font-size:21px;letter-spacing:-.5px;display:block}
+.kpi b.ok{color:var(--ok)} .kpi b.bad{color:var(--danger)}
+.kpi span{font-size:11.5px;color:var(--muted)}
+.kpi-dona{display:flex;gap:14px;align-items:center}
+.dona{width:92px;height:92px;border-radius:50%;flex:0 0 auto;position:relative;display:grid;place-items:center;background:conic-gradient(var(--ok) 0 calc(var(--p1)*1%),var(--danger) calc(var(--p1)*1%) calc((var(--p1) + var(--p2))*1%),var(--accent) calc((var(--p1) + var(--p2))*1%) 100%);box-shadow:0 0 20px rgba(34,211,238,.18)}
+.dona::after{content:'';position:absolute;inset:13px;border-radius:50%;background:var(--panel)}
+.dona-c{position:relative;z-index:2;text-align:center;line-height:1.1}
+.dona-c b{font-size:16px;display:block}
+.dona-c small{font-size:9px;color:var(--muted)}
+.leyenda{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.leyenda i{width:8px;height:8px;border-radius:3px;display:inline-block;margin-right:6px}
+
+/* ---------- TABS ---------- */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.tab{background:transparent;border:1px solid transparent;border-radius:999px;padding:8px 15px;font-size:13px;color:var(--muted)}
+.tab.active{background:var(--panel2);border-color:rgba(34,211,238,.4);color:var(--text);font-weight:700}
+.pill{background:var(--danger);color:#fff;border-radius:999px;padding:1px 7px;font-size:10.5px;margin-left:5px;font-weight:800}
+.toolbar{margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.toolbar input{max-width:340px}
+
+/* ---------- CARDS VENTAS ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(315px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);transition:.2s;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-2px);border-color:rgba(34,211,238,.35)}
+.card.mora{border-color:rgba(248,113,113,.45)}
+.card.mora::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--danger)}
+.card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:13px}
+.card-head h3{margin:0;font-size:15px;letter-spacing:-.2px}
+.card-head p{margin:3px 0 0;font-size:11.5px;color:var(--muted)}
+.badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;letter-spacing:.5px;white-space:nowrap}
+.b-vencida{background:rgba(248,113,113,.16);color:var(--danger);border:1px solid rgba(248,113,113,.35)}
+.b-pagada{background:rgba(52,211,153,.15);color:var(--ok);border:1px solid rgba(52,211,153,.35)}
+.b-pendiente{background:rgba(34,211,238,.13);color:var(--accent);border:1px solid rgba(34,211,238,.3)}
+.b-parcial{background:rgba(251,191,36,.14);color:var(--warn);border:1px solid rgba(251,191,36,.32)}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.grid4 div small{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.grid4 div b{font-size:14px}
+.barra{height:6px;border-radius:99px;background:var(--bg2);overflow:hidden;margin-bottom:13px}
+.barra span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#34d399);transition:width .4s}
+.card-foot{display:flex;gap:8px}
+.card-foot button{flex:1;padding:8px;font-size:12.5px}
+
+/* ---------- TABLAS ---------- */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:11px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:700}
+.tbl td{padding:12px;border-bottom:1px solid var(--border)}
+.tbl tbody tr{cursor:pointer;transition:.15s}
+.tbl tbody tr:hover{background:var(--panel2)}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.panel-box{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:var(--r);padding:6px 6px 0;box-shadow:var(--shadow);overflow:hidden}
+.total-final{display:flex;justify-content:space-between;align-items:center;padding:16px;margin-top:2px;background:rgba(248,113,113,.10);border-top:1px solid rgba(248,113,113,.3);font-weight:800}
+.total-final b{font-size:20px;color:var(--danger)}
+
+/* ---------- COBRANZA ---------- */
+.cob-bar{height:9px;border-radius:99px;background:var(--bg2);overflow:hidden;min-width:90px}
+.cob-bar span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#34d399,#22d3ee)}
+.acum{color:var(--ok);font-weight:700}
+.empty{text-align:center;padding:50px 20px;color:var(--muted);font-size:13.5px}
+.empty-mini{padding:16px;color:var(--muted);font-size:12.5px;text-align:center}
+.filtros-cob{display:flex;gap:10px;align-items:flex-end;margin-bottom:15px;flex-wrap:wrap;background:var(--panel);padding:14px;border-radius:12px;border:1px solid var(--border)}
+.filtros-cob label{flex:1;min-width:140px}
+
+/* ---------- MODALES ---------- */
+.modal{position:fixed;inset:0;background:rgba(3,7,15,.72);backdrop-filter:blur(6px);display:none;place-items:center;padding:18px;z-index:60}
+.modal.open{display:grid}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:18px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:pop .2s ease}
+.modal-box.wide{max-width:720px}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:17px 20px;border-bottom:1px solid var(--border)}
+.modal-head h2{margin:0;font-size:16px}
+.x{background:transparent;border:none;font-size:17px;padding:4px 8px;color:var(--muted)}
+.modal-body{padding:20px;overflow:auto;flex:1}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:15px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:20px}
+.form-grid-3{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.cuotas-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cuotas-head h3{margin:0;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.cuotas-list{max-height:250px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.cuota-row{display:grid;grid-template-columns:34px 1fr 90px 104px;gap:9px;align-items:end;background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
+.cuota-nro{font-size:12px;font-weight:800;color:var(--accent);align-self:center}
+.cuota-row label{font-size:10px}
+.cuota-row input{padding:7px 9px;font-size:12.5px}
+.cuota-fecha{font-size:11.5px;color:var(--muted);align-self:center;text-align:right}
+.indicador{margin-top:13px;font-size:13px;font-weight:700}
+.indicador.ok{color:var(--ok)}
+.indicador.bad{color:var(--danger)}
+.detalle-mini{font-size:11px;color:var(--muted);margin-top:4px}
+.info-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:16px;font-size:13px}
+.info-box b{font-size:17px}
+.movs{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+.movs li{display:flex;justify-content:space-between;font-size:12.5px;padding:9px 12px;background:var(--panel2);border-radius:9px;border:1px solid var(--border)}
+.movs .tipo{color:var(--muted);font-size:11px}
+.sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin:18px 0 9px}
+
+/* ---------- MANUAL ---------- */
+.manual h3{color:var(--accent);font-size:15px;margin-bottom:8px;margin-top:20px}
+.manual p, .manual li{font-size:13px;line-height:1.6;color:var(--text);margin-bottom:8px}
+.manual ul{padding-left:20px;margin-top:0}
+.manual strong{color:var(--warn)}
+
+/* ---------- TOAST ---------- */
+#toasts{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:9px;z-index:99}
+.toast{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);padding:13px 18px;border-radius:11px;font-size:13px;box-shadow:0 14px 40px rgba(0,0,0,.5);animation:slide .25s ease;max-width:330px}
+.toast.ok{border-left-color:var(--ok)}
+.toast.bad{border-left-color:var(--danger)}
+@keyframes slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* ---------- FOOTER ---------- */
+.footer-app{text-align:center;padding:25px 20px;margin-top:auto;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7}
+.footer-app strong.title{color:var(--warn);font-size:13px;letter-spacing:.3px;font-weight:700}
+.footer-app a{color:var(--accent);text-decoration:none}
+
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .cuota-row{grid-template-columns:28px 1fr 1fr;grid-template-areas:"n m d" ". f f"}
+  .cuota-nro{grid-area:n}.cuota-row label:nth-of-type(1){grid-area:m}
+  .cuota-row label:nth-of-type(2){grid-area:d}.cuota-fecha{grid-area:f;text-align:left;margin-top:4px}
+  .topbar{gap:10px}.brand h1{font-size:20px}.sub{font-size:12.5px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">💳</div>
+      <div>
+        <h1>Gestor de Ventas y Cobranzas con IA</h1>
+        <p class="sub">Crédito · Cuotas · Morosidad · Multimoneda</p>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="sello" id="sello"></span>
+      <button id="btnManual" title="Manual de Usuario">📖 Manual</button>
+      <button id="btnRespaldo" title="Respaldo en la Nube / Archivo">☁️ Respaldo</button>
+      <button id="btnPDF" title="Generar Reporte PDF">📄 PDF</button>
+      <button id="btnTasas" title="Configurar tasas de cambio">💱 Tasas</button>
+      <button id="btnCSV" title="Exportar a Excel">📥 CSV</button>
+      <button id="btnRefresh" title="Recalcular estados">🔄</button>
+      <button id="btnTheme" title="Cambiar tema">🌙</button>
+      <button class="primary" id="btnNueva">+ Nueva Venta</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="todos">Todos</button>
+    <button class="tab" data-tab="aldia">Al día</button>
+    <button class="tab" data-tab="vencidos" id="tabVencidos">⛳ Vencidos</button>
+    <button class="tab" data-tab="pagados">Pagados</button>
+    <button class="tab" data-tab="cobranza">📅 Cobranza</button>
+  </nav>
+
+  <div class="toolbar" id="toolbarBusqueda">
+    <input id="buscar" placeholder="🔍 Buscar cliente o artículo…">
+  </div>
+
+  <section id="panelLista">
+    <div id="vistaCards" class="cards"></div>
+    <div id="vistaVencidos" hidden></div>
+  </section>
+
+  <section id="panelCobranza" hidden>
+    <div class="filtros-cob">
+      <label>Desde<input type="date" id="cobDesde"></label>
+      <label>Hasta<input type="date" id="cobHasta"></label>
+      <button class="ghost" id="btnLimpiarFiltro" style="padding:10px 15px;height:42px">Limpiar</button>
+    </div>
+    <div id="cobTabla"></div>
+  </section>
+</div>
+
+<footer class="footer-app">
+  <p style="margin:0 0 6px 0">Creación y Diseño con IA por:</p>
+  <p style="margin:0"><strong class="title">Producciones e Inversiones Sathya</strong></p>
+  <p style="margin:0"><strong>Prof. Jesús Pulido</strong></p>
+  <p style="margin:0">Tlfs: +58 424 728.3199 / 416 291.6426</p>
+  <p style="margin:0">E-mail: <a href="mailto:jeshua166@gmail.com">jeshua166@gmail.com</a></p>
+</footer>
+
+<!-- ============ MODAL: VENTA ============ -->
+<div class="modal" id="modalVenta">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h2 id="mVentaTitulo">Nueva Venta</h2>
+      <button class="x" data-close="modalVenta">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label>Cliente<input id="fCliente" placeholder="Nombre del cliente"></label>
+        <label>Artículo<input id="fArticulo" placeholder="Artículo comprado"></label>
+      </div>
+      
+      <div class="form-grid">
+        <div>
+          <label>Monto total</label>
+          <div class="form-grid-3">
+            <input id="fMonto" type="number" step="0.01" min="0" placeholder="0.00">
+            <select id="fMoneda">
+              <option value="USD">USD $</option>
+              <option value="VES">VES Bs.</option>
+              <option value="COP">COP $</option>
+            </select>
+          </div>
+          <span class="currency-hint" id="hintMonto"></span>
+        </div>
+        
+        <div>
+          <label>Pago inicial</label>
+          <div class="form-grid-3">
+            <input id="fInicial" type="number" step="0.01" min="0" value="0">
+            <select id="fMonedaInicial">
+              <option value="USD">USD $</option>
+              <option value="VES">VES Bs.</option>
+              <option value="COP">COP $</option>
+            </select>
+          </div>
+          <span class="currency-hint" id="hintInicial"></span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label>Fecha de venta<input id="fFecha" type="date"></label>
+        <label>N° de cuotas<input id="fNCuotas" type="number" min="1" max="60" value="3"></label>
+        <label>Periodicidad
+          <select id="fPeriodo">
+            <option value="7">Semanal (7 días)</option>
+            <option value="15">Quincenal (15 días)</option>
+            <option value="30" selected>Mensual (30 días)</option>
+            <option value="custom">Personalizada…</option>
+          </select>
+        </label>
+        <label id="wrapCustom" hidden>Días entre cuotas<input id="fPeriodoCustom" type="number" min="1" value="30"></label>
+      </div>
+      <div class="cuotas-head">
+        <h3>Cuotas (Calculadas en USD)</h3>
+        <button id="btnGenerar" class="ghost">⚙️ Generar / Regenerar</button>
+      </div>
+      <div id="listaCuotasDraft" class="cuotas-list"></div>
+      <div class="indicador bad" id="indicadorMontos">❌ ajustar montos</div>
+      <div class="detalle-mini" id="detalleMontos"></div>
+    </div>
+    <div class="modal-foot">
+      <button data-close="modalVenta">Cancelar</button>
+      <button class="primary" id="btnGuardarVenta">Guardar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DETALLE ============ -->
+<div class="modal" id="modalDetalle">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h2 id="dTitulo">Detalle del Cliente</h2>
+      <button class="x" data-close="modalDetalle">✕</button>
+    </div>
+    <div class="modal-body" id="dBody"></div>
+    <div class="modal-foot">
+      <button class="danger" id="btnEliminar">🗑 Eliminar</button>
+      <button id="btnImprimir" style="background:var(--warn);color:#04121c;border:none;font-weight:700">🖨 Recibo</button>
+      <button id="btnEditar">✏️ Editar</button>
+      <button class="primary" id="btnAbonarDesdeDetalle">+ Abonar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ABONO ============ -->
+<div class="modal" id="modalAbono">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Registrar Abono</h2>
+      <button class="x" data-close="modalAbono">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" id="aInfo"></div>
+      
+      <div class="form-grid" style="margin-bottom:16px">
+        <div>
+          <label>Monto del abono</label>
+          <div class="form-grid-3">
+            <input id="aMonto" type="number" step="0.01" min="0" placeholder="0.00">
+            <select id="aMoneda">
+              <option value="USD">USD $</option>
+              <option value="VES">VES Bs.</option>
+              <option value="COP">COP $</option>
+            </select>
+          </div>
+          <span class="currency-hint" id="hintAbono"></span>
+        </div>
+        <label>Fecha del pago<input id="aFecha" type="date"></label>
+      </div>
+      
+      <div class="sec-title">Aplicación en cascada (cuota más antigua primero)</div>
+      <div id="aPreview"></div>
+    </div>
+    <div class="modal-foot">
+      <button data-close="modalAbono">Cancelar</button>
+      <button class="primary" id="btnGuardarAbono">Registrar abono</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: TASAS ============ -->
+<div class="modal" id="modalTasas">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Configuración de Tasas de Cambio</h2>
+      <button class="x" data-close="modalTasas">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px; color:var(--muted); margin-top:0; margin-bottom:15px;">
+        Define cuántos Bolívares (VES) y Pesos (COP) equivalen a <b>1 Dólar (USD)</b>. 
+        La app usará estas tasas para convertir los pagos a dólares.
+      </p>
+      <div class="form-grid">
+        <label>Tasa VES (Bolívares)<input id="tasaVES" type="number" step="0.01" min="0.01"></label>
+        <label>Tasa COP (Pesos)<input id="tasaCOP" type="number" step="0.01" min="0.01"></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button data-close="modalTasas">Cancelar</button>
+      <button class="primary" id="btnGuardarTasas">Guardar Tasas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: RESPALDO ============ -->
+<div class="modal" id="modalRespaldo">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>☁️ Respaldo y Restauración</h2>
+      <button class="x" data-close="modalRespaldo">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px; color:var(--muted); margin-top:0; margin-bottom:15px;">
+        Descarga un archivo seguro con toda tu base de datos (clientes, ventas y pagos) para guardarlo en Google Drive, OneDrive o WhatsApp. Si cambias de dispositivo, puedes restaurar la información subiendo ese mismo archivo.
+      </p>
+      <div style="display:flex; flex-direction:column; gap:15px;">
+        <button class="primary" id="btnDescargarBackup" style="padding:12px;">⬇️ Descargar Copia de Seguridad (JSON)</button>
+        <div style="border:2px dashed var(--border); border-radius:12px; padding:20px; text-align:center; position:relative;">
+          <p style="margin:0 0 10px; font-size:13px; color:var(--muted);">Sube tu archivo JSON para restaurar todo</p>
+          <input type="file" id="fileRestore" accept=".json" style="display:none;">
+          <button class="ghost" id="btnRestaurarLabel">📂 Seleccionar Archivo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: MANUAL ============ -->
+<div class="modal" id="modalManual">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h2>📖 Manual de Usuario</h2>
+      <button class="x" data-close="modalManual">✕</button>
+    </div>
+    <div class="modal-body manual">
+      <p>Bienvenido al <strong>Gestor de Ventas y Cobranzas con IA</strong>. Esta aplicación está diseñada para administrar créditos, cuotas y cobranzas en entornos de alta volatilidad cambiaria (especialmente para Venezuela: USD, VES y COP).</p>
+      
+      <h3>1. Configuración Multimoneda (💱 Tasas)</h3>
+      <p>Antes de registrar ventas, ve a <strong>💱 Tasas</strong> y define a cuánto equivale 1 Dólar en Bolívares (VES) y Pesos (COP). La app protegerá tu capital calculando todas las deudas y saldos internamente en <strong>Dólares (USD)</strong>.</p>
+      
+      <h3>2. Registrar una Venta (+ Nueva Venta)</h3>
+      <ul>
+        <li>Ingresa el nombre y el artículo.</li>
+        <li>Coloca el <strong>Monto Total</strong> y el <strong>Pago Inicial</strong>. Puedes seleccionar si el cliente pagó en USD, VES o COP; la app mostrará el equivalente en dólares abajo.</li>
+        <li>Define el número de cuotas y su periodicidad (semanal, quincenal, mensual o personalizada).</li>
+        <li>Verás un indicador: <strong>✅ montos ajustados</strong>. Si cambias manualmente una cuota y no cuadra, te pedirá ajustar.</li>
+      </ul>
+
+      <h3>3. Registrar Abonos (Cobranza)</h3>
+      <p>Haz clic en <strong>+ Abonar</strong> sobre el cliente. Si te paga en Bolívares o Pesos, selecciona esa moneda. La app calculará los USD con la tasa del día y los aplicará automáticamente a la <strong>cuota más antigua pendiente</strong> (cascada FIFO).</p>
+
+      <h3>4. Panel de Vencidos ⛳</h3>
+      <p>En la pestaña <strong>Vencidos</strong> verás a los clientes morosos, cuánto deben y cuántos días de retraso tienen. El sistema calcula esto automáticamente usando la fecha actual de tu dispositivo.</p>
+
+      <h3>5. Cobranza Mensual 📅</h3>
+      <p>Revisa cuánto dinero real ha entrado mes a mes (sumando iniciales y cuotas). Puedes filtrar por rango de fechas y ver el acumulado corrido de tu recuperación de capital.</p>
+
+      <h3>6. Reportes y Respaldos</h3>
+      <ul>
+        <li><strong>📄 PDF:</strong> Genera un reporte ejecutivo completo para imprimir o guardar.</li>
+        <li><strong>📥 CSV:</strong> Descarga una hoja de cálculo para Excel.</li>
+        <li><strong>☁️ Respaldo:</strong> Descarga tu base de datos JSON para guardarla en la nube.</li>
+      </ul>
+    </div>
+    <div class="modal-foot">
+      <button class="primary" data-close="modalManual">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ================= UTILIDADES ================= */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const round2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtMoney = (n, cur = 'USD') => {
+  const sym = cur === 'USD' ? '$' : cur === 'VES' ? 'Bs. ' : 'COP ';
+  return sym + (round2(n) || 0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+};
+
+/* ================= FECHAS ================= */
+const DAY = 86400000;
+function iso(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function todayISO(){ return iso(new Date()); }
+function parseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(s, n){ const d = parseISO(s); d.setDate(d.getDate() + n); return iso(d); }
+function diffDays(a, b){ return Math.round((parseISO(b) - parseISO(a)) / DAY); }
+function fmtFecha(s){ if(!s) return '—'; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function mesLabel(key){ const [y,m] = key.split('-'); return `${MESES[+m-1]} ${y}`; }
+
+/* ================= ESTADO / PERSISTENCIA ================= */
+const LS = 'gvc_v2';
+let state = { 
+  theme: 'dark', 
+  tasas: { VES: 40.00, COP: 4000.00 },
+  ventas: [] 
+};
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS);
+    if(raw){ 
+      const p = JSON.parse(raw); 
+      if(p && Array.isArray(p.ventas)) state = p; 
+      if(!state.tasas) state.tasas = { VES: 40.00, COP: 4000.00 };
+    }
+  }catch(e){ console.warn('localStorage corrupto, iniciando vacío'); }
+  if(!state.ventas) state.ventas = [];
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){ toast('⚠ No se pudo guardar (almacenamiento lleno)','bad'); } }
+
+function getTasa(moneda){
+  if(moneda === 'USD') return 1;
+  return state.tasas[moneda] || 1;
+}
+
+/* ================= DOMINIO ================= */
+function totalAbonos(v){
+  return round2(v.movimientos.filter(m => m.tipo === 'ABONO').reduce((s,m) => s + m.montoUSD, 0));
+}
+function cuotasEstado(v){
+  const hoy = todayISO();
+  let resto = totalAbonos(v);
+  const orden = [...v.cuotas].sort((a,b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento) || a.nro - b.nro);
+  return orden.map(c => {
+    const pagado = round2(Math.min(resto, c.montoUSD));
+    resto = round2(Math.max(0, resto - c.montoUSD));
+    const saldo = round2(Math.max(0, c.montoUSD - pagado));
+    const vencida = c.fechaVencimiento < hoy && saldo > 0.005;
+    let estado;
+    if(saldo <= 0.005) estado = 'PAGADA';
+    else if(vencida) estado = 'VENCIDA';
+    else if(pagado > 0.005) estado = 'PARCIAL';
+    else estado = 'PENDIENTE';
+    return { ...c, pagado, saldo, estado, diasRetraso: vencida ? diffDays(c.fechaVencimiento, hoy) : 0 };
+  });
+}
+function resumenVenta(v){
+  const cuotas = cuotasEstado(v);
+  const vencidas = cuotas.filter(c => c.estado === 'VENCIDA');
+  const montoVencido = round2(vencidas.reduce((s,c) => s + c.saldo, 0));
+  const diasRetraso = vencidas.length ? Math.max(...vencidas.map(c => c.diasRetraso)) : 0;
+  const totalPagadoUSD = round2(v.pagoInicialUSD + totalAbonos(v));
+  const saldoTotal = round2(Math.max(0, v.montoTotalUSD - totalPagadoUSD));
+  const proxima = cuotas.find(c => c.saldo > 0.005) || null;
+
+  let estado;
+  if(saldoTotal <= 0.005) estado = 'PAGADA';
+  else if(vencidas.length) estado = 'VENCIDA';
+  else estado = 'AL DÍA';
+
+  return { cuotas, vencidas, montoVencido, diasRetraso, totalPagadoUSD, saldoTotal, proxima, estado };
+}
+
+/* ================= RENDER: KPIs ================= */
+function renderKPIs(){
+  const totalVendidoUSD = round2(state.ventas.reduce((s,v) => s + v.montoTotalUSD, 0));
+  let cobradoUSD = 0, vencidoUSD = 0, morosos = 0;
+  state.ventas.forEach(v => {
+    const r = resumenVenta(v);
+    cobradoUSD += r.totalPagadoUSD;
+    vencidoUSD += r.montoVencido;
+    if(r.estado === 'VENCIDA') morosos++;
+  });
+  cobradoUSD = round2(cobradoUSD); vencidoUSD = round2(vencidoUSD);
+  const porCobrarUSD = round2(Math.max(0, totalVendidoUSD - cobradoUSD));
+  const p1 = totalVendidoUSD ? round2(cobradoUSD / totalVendidoUSD * 100) : 0;
+  const p2 = totalVendidoUSD ? round2(vencidoUSD / totalVendidoUSD * 100) : 0;
+
+  $('#kpis').innerHTML = `
+    <div class="kpi">
+      <small>Total vendido (USD)</small>
+      <b>${fmtMoney(totalVendidoUSD)}</b>
+      <span>${state.ventas.length} venta(s) registrada(s)</span>
+    </div>
+    <div class="kpi">
+      <small>Cobrado (USD)</small>
+      <b class="ok">${fmtMoney(cobradoUSD)}</b>
+      <span>Inicial + abonos</span>
+    </div>
+    <div class="kpi">
+      <small>Por cobrar (USD)</small>
+      <b>${fmtMoney(porCobrarUSD)}</b>
+      <span>Saldo pendiente total</span>
+    </div>
+    <div class="kpi">
+      <small>Vencido ⛳ (USD)</small>
+      <b class="bad">${fmtMoney(vencidoUSD)}</b>
+      <span>${morosos} cliente(s) en mora</span>
+    </div>
+    <div class="kpi kpi-dona">
+      <div class="dona" style="--p1:${p1};--p2:${p2}">
+        <div class="dona-c"><b>${p1.toFixed(0)}%</b><small>cobrado</small></div>
+      </div>
+      <div class="leyenda">
+        <span><i style="background:var(--ok)"></i>Cobrado ${p1.toFixed(1)}%</span>
+        <span><i style="background:var(--danger)"></i>Vencido ${p2.toFixed(1)}%</span>
+        <span><i style="background:var(--accent)"></i>Por vencer ${(100-p1-p2).toFixed(1)}%</span>
+      </div>
+    </div>`;
+}
+
+/* ================= RENDER: LISTA ================= */
+function renderLista(){
+  const esCobranza = tabActual === 'cobranza';
+  $('#panelLista').hidden = esCobranza;
+  $('#panelCobranza').hidden = !esCobranza;
+  $('#toolbarBusqueda').hidden = esCobranza;
+  if(esCobranza) return;
+
+  $('#vistaCards').hidden = tabActual === 'vencidos';
+  $('#vistaVencidos').hidden = tabActual !== 'vencidos';
+
+  const q = busqueda.toLowerCase().trim();
+  let items = state.ventas.map(v => ({ v, r: resumenVenta(v) }));
+
+  if(q) items = items.filter(({v}) => v.cliente.toLowerCase().includes(q) || v.articulo.toLowerCase().includes(q));
+
+  if(tabActual === 'aldia')    items = items.filter(x => x.r.estado === 'AL DÍA');
+  if(tabActual === 'vencidos') items = items.filter(x => x.r.estado === 'VENCIDA');
+  if(tabActual === 'pagados')  items = items.filter(x => x.r.estado === 'PAGADA');
+
+  items.sort((a,b) => b.v.fechaVenta.localeCompare(a.v.fechaVenta));
+
+  if(tabActual === 'vencidos'){
+    if(!items.length){
+      $('#vistaVencidos').innerHTML = `<div class="empty">🎉 No hay clientes en mora. ¡Cartera al día!</div>`;
+    } else {
+      items.sort((a,b) => b.r.diasRetraso - a.r.diasRetraso);
+      const totalVenc = round2(items.reduce((s,x) => s + x.r.montoVencido, 0));
+      $('#vistaVencidos').innerHTML = `
+        <div class="panel-box">
+          <table class="tbl">
+            <thead><tr>
+              <th>Cliente</th><th>Artículo</th>
+              <th class="num">Monto vencido (USD)</th><th class="num">Días de retraso</th>
+            </tr></thead>
+            <tbody>
+              ${items.map(({v,r}) => `
+                <tr data-ver="${v.id}">
+                  <td><b>⛳ ${esc(v.cliente)}</b></td>
+                  <td style="color:var(--muted)">${esc(v.articulo)}</td>
+                  <td class="num" style="color:var(--danger);font-weight:700">${fmtMoney(r.montoVencido)}</td>
+                  <td class="num"><span class="badge b-vencida">${r.diasRetraso} día(s)</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class="total-final">
+            <span>TOTAL DEUDA VENCIDA (USD)</span>
+            <b>${fmtMoney(totalVenc)}</b>
+          </div>
+        </div>`;
+      $$('#vistaVencidos tr[data-ver]').forEach(tr =>
+        tr.addEventListener('click', () => abrirDetalle(tr.dataset.ver)));
+    }
+    return;
+  }
+
+  if(!items.length){
+    $('#vistaCards').innerHTML = `<div class="empty" style="grid-column:1/-1">
+      ${state.ventas.length ? 'Sin resultados para este filtro.' : '📋 Aún no hay ventas registradas.<br>Pulsa <b>+ Nueva Venta</b> para comenzar.'}
+    </div>`;
+    return;
+  }
+
+  $('#vistaCards').innerHTML = items.map(({v, r}) => {
+    const mora = r.estado === 'VENCIDA';
+    const pct = v.montoTotalUSD ? Math.min(100, r.totalPagadoUSD / v.montoTotalUSD * 100) : 0;
+    const badge = mora ? 'b-vencida' : r.estado === 'PAGADA' ? 'b-pagada' : 'b-pendiente';
+    const txtEstado = mora ? 'VENCIDA' : r.estado;
+    
+    const infoVenta = v.monedaOriginal === 'USD' 
+      ? '' 
+      : `<br><span style="font-size:10px;color:var(--accent)">Ref: ${fmtMoney(v.montoTotalOriginal, v.monedaOriginal)}</span>`;
+
+    return `
+      <article class="card ${mora ? 'mora' : ''}">
+        <div class="card-head">
+          <div>
+            <h3>${mora ? '⛳ ' : ''}${esc(v.cliente)}</h3>
+            <p>${esc(v.articulo)} · ${fmtFecha(v.fechaVenta)}${infoVenta}</p>
+          </div>
+          <span class="badge ${badge}">${txtEstado}</span>
+        </div>
+        <div class="grid4">
+          <div><small>Precio (USD)</small><b>${fmtMoney(v.montoTotalUSD)}</b></div>
+          <div><small>Abonado (USD)</small><b>${fmtMoney(r.totalPagadoUSD)}</b></div>
+          <div><small>Saldo (USD)</small><b style="color:${r.saldoTotal > 0 ? 'var(--warn)' : 'var(--ok)'}">${fmtMoney(r.saldoTotal)}</b></div>
+          <div><small>Próx. vence</small><b style="font-size:12.5px">${r.proxima ? fmtFecha(r.proxima.fechaVencimiento) : '—'}</b></div>
+        </div>
+        <div class="barra"><span style="width:${pct}%"></span></div>
+        <div class="card-foot">
+          <button data-ver="${v.id}">Ver detalle</button>
+          <button class="primary" data-abonar="${v.id}" ${r.saldoTotal <= 0.005 ? 'disabled' : ''}>+ Abonar</button>
+        </div>
+      </article>`;
+  }).join('');
+
+  $$('#vistaCards [data-ver]').forEach(b => b.addEventListener('click', () => abrirDetalle(b.dataset.ver)));
+  $$('#vistaCards [data-abonar]').forEach(b => b.addEventListener('click', () => abrirAbono(b.dataset.abonar)));
+}
+
+/* ================= RENDER: COBRANZA ================= */
+function cobranzaData(){
+  const desde = $('#cobDesde').value;
+  const hasta = $('#cobHasta').value;
+  
+  const map = {};
+  state.ventas.forEach(v => v.movimientos.forEach(m => {
+    if(desde && m.fecha < desde) return;
+    if(hasta && m.fecha > hasta) return;
+    
+    const k = m.fecha.slice(0, 7);
+    if(!map[k]) map[k] = { inicial: 0, cuotas: 0 };
+    if(m.tipo === 'INICIAL') map[k].inicial += m.montoUSD;
+    else map[k].cuotas += m.montoUSD;
+  }));
+  let acum = 0;
+  return Object.keys(map).sort().map(k => {
+    const ini = round2(map[k].inicial), cuo = round2(map[k].cuotas);
+    const total = round2(ini + cuo);
+    acum = round2(acum + total);
+    return { key: k, label: mesLabel(k), inicial: ini, cuotas: cuo, total, acumulado: acum };
+  });
+}
+
+function renderCobranza(){
+  const data = cobranzaData();
+  if(!data.length){
+    $('#cobTabla').innerHTML = `<div class="empty">📅 No hay movimientos en este rango de fechas.</div>`;
+    return;
+  }
+  const max = Math.max(...data.map(d => d.total), 1);
+  const gran = data[data.length - 1].acumulado;
+
+  $('#cobTabla').innerHTML = `
+    <div class="panel-box">
+      <table class="tbl">
+        <thead><tr>
+          <th>Mes</th>
+          <th class="num">Inicial (USD)</th>
+          <th class="num">Cuotas (USD)</th>
+          <th class="num">Total del mes</th>
+          <th class="num">Acumulado</th>
+          <th style="width:130px">Proporción</th>
+        </tr></thead>
+        <tbody>
+          ${data.map(d => `
+            <tr style="cursor:default">
+              <td><b style="text-transform:capitalize">${d.label}</b></td>
+              <td class="num">${fmtMoney(d.inicial)}</td>
+              <td class="num">${fmtMoney(d.cuotas)}</td>
+              <td class="num" style="font-weight:700">${fmtMoney(d.total)}</td>
+              <td class="num acum">${fmtMoney(d.acumulado)}</td>
+              <td><div class="cob-bar"><span style="width:${(d.total / max * 100).toFixed(1)}%"></span></div></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="total-final" style="background:rgba(52,211,153,.10);border-top-color:rgba(52,211,153,.3)">
+        <span>RECUPERACIÓN TOTAL DE CAPITAL EN EL RANGO (USD)</span>
+        <b style="color:var(--ok)">${fmtMoney(gran)}</b>
+      </div>
+    </div>`;
+}
+
+/* ================= EXPORTACIONES (CSV, PDF, RESPALDO) ================= */
+function exportarCSV(){
+  if(!state.ventas.length) return toast('⚠ No hay ventas para exportar', 'bad');
+  
+  const rows = [['Cliente','Articulo','Fecha Venta','Monto USD','Pago Inicial USD','Abonos USD','Saldo USD','Estado','Moneda Original']];
+  state.ventas.forEach(v => {
+    const r = resumenVenta(v);
+    rows.push([
+      v.cliente, v.articulo, v.fechaVenta, 
+      v.montoTotalUSD, v.pagoInicialUSD, totalAbonos(v), 
+      r.saldoTotal, r.estado, v.monedaOriginal
+    ]);
+  });
+  
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `Ventas_${todayISO()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast('✅ Archivo CSV descargado', 'ok');
+}
+
+function generarReportePDF() {
+  const win = window.open('', '_blank');
+  const totalVendido = round2(state.ventas.reduce((s,v) => s + v.montoTotalUSD, 0));
+  let cobrado = 0, vencido = 0;
+  state.ventas.forEach(v => {
+    const r = resumenVenta(v);
+    cobrado += r.totalPagadoUSD;
+    vencido += r.montoVencido;
+  });
+  
+  win.document.write(`
+    <html><head><title>Reporte Ejecutivo - Gestor de Ventas</title>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; max-width: 900px; margin: 0 auto; }
+      .header { text-align: center; border-bottom: 3px solid #22d3ee; padding-bottom: 20px; margin-bottom: 30px; }
+      .header h1 { margin: 0 0 5px 0; color: #0f172a; font-size: 24px; }
+      .header p { margin: 2px 0; font-size: 14px; color: #555; }
+      .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
+      .kpi { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; text-align: center; }
+      .kpi small { display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 5px; }
+      .kpi b { font-size: 18px; color: #0f172a; }
+      .kpi.ok b { color: #059669; }
+      .kpi.bad b { color: #dc2626; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
+      th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+      th { background: #f1f5f9; font-weight: bold; color: #333; }
+      .num { text-align: right; }
+      .footer { text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
+      @media print { body { padding: 0; } .kpi { break-inside: avoid; } tr { break-inside: avoid; } }
+    </style></head><body>
+      <div class="header">
+        <h1>Producciones e Inversiones Sathya</h1>
+        <p>Reporte Ejecutivo de Ventas y Cobranzas (USD)</p>
+        <p>Generado el: ${new Date().toLocaleString('es-VE')}</p>
+      </div>
+      
+      <div class="kpis">
+        <div class="kpi"><small>Cartera Total</small><b>${fmtMoney(totalVendido)}</b></div>
+        <div class="kpi ok"><small>Capital Recuperado</small><b>${fmtMoney(cobrado)}</b></div>
+        <div class="kpi bad"><small>Deuda Vencida</small><b>${fmtMoney(vencido)}</b></div>
+      </div>
+
+      <h3>Listado General de Ventas</h3>
+      <table>
+        <thead><tr><th>Cliente</th><th>Artículo</th><th>Fecha</th><th>Monto USD</th><th>Abonado USD</th><th>Saldo USD</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${state.ventas.map(v => {
+            const r = resumenVenta(v);
+            return `<tr>
+              <td>${v.cliente}</td>
+              <td>${v.articulo}</td>
+              <td>${fmtFecha(v.fechaVenta)}</td>
+              <td class="num">${fmtMoney(v.montoTotalUSD)}</td>
+              <td class="num">${fmtMoney(r.totalPagadoUSD)}</td>
+              <td class="num"><b>${fmtMoney(r.saldoTotal)}</b></td>
+              <td style="color:${r.estado === 'VENCIDA' ? '#dc2626' : r.estado === 'PAGADA' ? '#059669' : '#333'}">${r.estado}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p>Reporte generado automáticamente por el Gestor de Ventas con IA.</p>
+        <p>Prof. Jesús Pulido · Tlfs: +58 424 728.3199 / 416 291.6426 · jeshua166@gmail.com</p>
+      </div>
+    </body></html>
+  `);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+function descargarRespaldo() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+  const dlAnchorElem = document.createElement('a');
+  dlAnchorElem.setAttribute("href", dataStr);
+  dlAnchorElem.setAttribute("download", `Respaldo_Gestor_${todayISO()}.json`);
+  dlAnchorElem.click();
+  toast('✅ Respaldo descargado. Guárdalo en tu nube.', 'ok');
+}
+
+function restaurarRespaldo(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      if(!parsed.ventas || !Array.isArray(parsed.ventas)) throw new Error("Formato inválido");
+      
+      if(confirm("⚠️ Esto reemplazará todos los datos actuales. ¿Continuar?")) {
+        state = parsed;
+        save();
+        render();
+        cerrarModal('modalRespaldo');
+        toast('✅ Base de datos restaurada con éxito', 'ok');
+      }
+    } catch (err) {
+      toast('❌ Error: El archivo no es un respaldo válido', 'bad');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // Limpiar input
+}
+
+/* ================= IMPRIMIR RECORDATORIO (Individual) ================= */
+function imprimirRecordatorio(){
+  const v = state.ventas.find(x => x.id === detalleId);
+  if(!v) return;
+  const r = resumenVenta(v);
+  
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>Recordatorio - ${v.cliente}</title>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #333; max-width: 800px; margin: 0 auto; }
+      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px dashed #ccc; padding-bottom: 15px; }
+      .header h1 { margin: 0 0 5px 0; color: #0f172a; font-size: 22px; }
+      .header p { margin: 2px 0; font-size: 13px; color: #555; }
+      .info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 25px; }
+      .info b { color: #0f172a; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; }
+      th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+      th { background: #f8fafc; font-weight: bold; color: #333; }
+      .mora { color: #dc2626; font-weight: bold; }
+      .total-box { text-align: right; font-size: 18px; padding: 15px; background: #f8fafc; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 30px; }
+      .total-box span { color: #dc2626; font-weight: bold; }
+      .footer { text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
+    </style></head><body>
+      <div class="header">
+        <h1>Producciones e Inversiones Sathya</h1>
+        <p>Estado de Cuenta y Recordatorio de Pago</p>
+      </div>
+      <div class="info">
+        <div><b>Cliente:</b> ${v.cliente}</div>
+        <div><b>Artículo:</b> ${v.articulo}</div>
+        <div><b>Fecha de Venta:</b> ${fmtFecha(v.fechaVenta)}</div>
+        <div><b>Estado:</b> ${r.estado}</div>
+        <div><b>Precio Total (USD):</b> ${fmtMoney(v.montoTotalUSD)}</div>
+        <div><b>Abonos Registrados (USD):</b> ${fmtMoney(r.totalPagadoUSD)}</div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Vencimiento</th><th>Monto (USD)</th><th>Pagado (USD)</th><th>Saldo (USD)</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${r.cuotas.map(c => `<tr>
+            <td>${c.nro}</td>
+            <td>${fmtFecha(c.fechaVencimiento)}</td>
+            <td>${fmtMoney(c.montoUSD)}</td>
+            <td>${fmtMoney(c.pagado)}</td>
+            <td>${fmtMoney(c.saldo)}</td>
+            <td class="${c.estado === 'VENCIDA' ? 'mora' : ''}">${c.estado}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="total-box">
+        Saldo Pendiente Total (USD): <span>${fmtMoney(r.saldoTotal)}</span>
+      </div>
+      <div class="footer">
+        <p>Gracias por su preferencia.</p>
+        <p>Prof. Jesús Pulido · Tlfs: +58 424 728.3199 / 416 291.6426 · jeshua166@gmail.com</p>
+      </div>
+    </body></html>
+  `);
+  win.document.close();
+  setTimeout(() => win.print(), 250);
+}
+
+/* ================= MODAL: VENTA ================= */
+let editandoId = null, cuotasDraft = [], cuotasPristine = true;
+
+function getMontoUSD(selMonto, selMoneda) {
+  const monto = num($(selMonto).value);
+  const moneda = $(selMoneda).value;
+  return round2(monto / getTasa(moneda));
+}
+
+function actualizarHints() {
+  const uMonto = getMontoUSD('#fMonto', '#fMoneda');
+  const uInicial = getMontoUSD('#fInicial', '#fMonedaInicial');
+  
+  $('#hintMonto').textContent = uMonto > 0 ? `≈ $${uMonto.toFixed(2)} USD` : '';
+  $('#hintInicial').textContent = uInicial > 0 ? `≈ $${uInicial.toFixed(2)} USD` : '';
+}
+
+function generarCuotas(){
+  const montoUSD = getMontoUSD('#fMonto', '#fMoneda');
+  const inicialUSD = getMontoUSD('#fInicial', '#fMonedaInicial');
+  
+  const n = Math.max(1, Math.min(60, parseInt($('#fNCuotas').value) || 1));
+  const fecha = $('#fFecha').value || todayISO();
+  let periodo = $('#fPeriodo').value;
+  periodo = periodo === 'custom' ? Math.max(1, parseInt($('#fPeriodoCustom').value) || 30) : parseInt(periodo);
+
+  const saldoUSD = round2(Math.max(0, montoUSD - inicialUSD));
+  const base = round2(saldoUSD / n);
+
+  cuotasDraft = [];
+  let acum = 0;
+  for(let i = 0; i < n; i++){
+    const esUltima = i === n - 1;
+    const m = esUltima ? round2(saldoUSD - acum) : base;
+    acum = round2(acum + m);
+    const dias = periodo * (i + 1);
+    cuotasDraft.push({ id: uid(), nro: i + 1, montoUSD: Math.max(0, m), dias, fechaVencimiento: addDays(fecha, dias) });
+  }
+  cuotasPristine = true;
+}
+function renderCuotasDraft(){
+  const cont = $('#listaCuotasDraft');
+  if(!cuotasDraft.length){
+    cont.innerHTML = `<div class="empty-mini">Sin cuotas. Define el n° de cuotas y pulsa «Generar».</div>`;
+    return;
+  }
+  cont.innerHTML = cuotasDraft.map((c, i) => `
+    <div class="cuota-row" data-i="${i}">
+      <span class="cuota-nro">#${i + 1}</span>
+      <label>Monto USD<input type="number" step="0.01" min="0" class="inp-monto" value="${c.montoUSD.toFixed(2)}"></label>
+      <label>Días<input type="number" step="1" min="1" class="inp-dias" value="${c.dias}"></label>
+      <span class="cuota-fecha">${fmtFecha(c.fechaVencimiento)}</span>
+    </div>`).join('');
+}
+function actualizarIndicador(){
+  const montoUSD = getMontoUSD('#fMonto', '#fMoneda');
+  const inicialUSD = getMontoUSD('#fInicial', '#fMonedaInicial');
+  const sumaCuotasUSD = round2(cuotasDraft.reduce((s,c) => s + c.montoUSD, 0));
+  const totalUSD = round2(inicialUSD + sumaCuotasUSD);
+  const diff = round2(montoUSD - totalUSD);
+  const ok = Math.abs(diff) < 0.01 && montoUSD > 0 && cuotasDraft.length > 0;
+
+  const el = $('#indicadorMontos');
+  el.className = 'indicador ' + (ok ? 'ok' : 'bad');
+
+  if(ok){
+    el.textContent = '✅ montos ajustados';
+  } else {
+    let msg = '❌ ajustar montos';
+    if(montoUSD <= 0) msg += ' · define el precio del artículo';
+    else if(!cuotasDraft.length) msg += ' · genera las cuotas';
+    else if(diff > 0) msg += ` · faltan $${diff.toFixed(2)}`;
+    else msg += ` · sobran $${Math.abs(diff).toFixed(2)}`;
+    el.textContent = msg;
+  }
+  $('#detalleMontos').textContent =
+    `Inicial $${inicialUSD.toFixed(2)} + ${cuotasDraft.length} cuota(s) $${sumaCuotasUSD.toFixed(2)} = $${totalUSD.toFixed(2)}  ·  Precio Total: $${montoUSD.toFixed(2)} USD`;
+}
+
+function abrirModalVenta(ventaId = null){
+  editandoId = ventaId;
+  const v = ventaId ? state.ventas.find(x => x.id === ventaId) : null;
+  $('#mVentaTitulo').textContent = v ? 'Editar Venta' : 'Nueva Venta';
+  $('#fCliente').value = v ? v.cliente : '';
+  $('#fArticulo').value = v ? v.articulo : '';
+  
+  $('#fMonto').value = v ? v.montoTotalOriginal : '';
+  $('#fMoneda').value = v ? v.monedaOriginal : 'USD';
+  $('#fInicial').value = v ? v.pagoInicialOriginal : 0;
+  $('#fMonedaInicial').value = v ? v.monedaOriginal : 'USD'; // Asumimos misma moneda para inicial
+  
+  $('#fFecha').value = v ? v.fechaVenta : todayISO();
+  $('#fNCuotas').value = v ? v.cuotas.length : 3;
+  $('#fPeriodo').value = '30';
+  $('#fPeriodoCustom').value = 30;
+  $('#wrapCustom').hidden = true;
+
+  if(v){
+    cuotasDraft = v.cuotas.map(c => ({ ...c }));
+    cuotasPristine = false;
+  } else {
+    cuotasDraft = [];
+    generarCuotas();
+  }
+  renderCuotasDraft();
+  actualizarHints();
+  actualizarIndicador();
+  abrirModal('modalVenta');
+  setTimeout(() => $('#fCliente').focus(), 80);
+}
+
+function guardarVenta(){
+  const cliente = $('#fCliente').value.trim();
+  const articulo = $('#fArticulo').value.trim();
+  
+  const montoOrig = round2(num($('#fMonto').value));
+  const monedaOrig = $('#fMoneda').value;
+  const tasaVenta = getTasa(monedaOrig);
+  const montoUSD = round2(montoOrig / tasaVenta);
+
+  const inicialOrig = round2(num($('#fInicial').value));
+  const monedaIni = $('#fMonedaInicial').value;
+  const tasaIni = getTasa(monedaIni);
+  const inicialUSD = round2(inicialOrig / tasaIni);
+
+  const fechaVenta = $('#fFecha').value || todayISO();
+
+  if(!cliente) return toast('⚠ El nombre del cliente es obligatorio', 'bad');
+  if(!articulo) return toast('⚠ Indica el artículo comprado', 'bad');
+  if(montoUSD <= 0) return toast('⚠ El monto total debe ser mayor a 0', 'bad');
+  if(inicialUSD < 0) return toast('⚠ El pago inicial no puede ser negativo', 'bad');
+  if(inicialUSD > montoUSD) return toast('⚠ El pago inicial no puede superar el precio', 'bad');
+  if(!cuotasDraft.length) return toast('⚠ Genera al menos una cuota', 'bad');
+  if(cuotasDraft.some(c => c.montoUSD <= 0)) return toast('⚠ Todas las cuotas deben tener monto mayor a 0', 'bad');
+
+  const sumaCuotasUSD = round2(cuotasDraft.reduce((s,c) => s + c.montoUSD, 0));
+  if(Math.abs(round2(inicialUSD + sumaCuotasUSD) - montoUSD) > 0.01){
+    return toast('❌ Inicial + cuotas no coincide con el precio. Ajusta los montos.', 'bad');
+  }
+
+  const cuotasFinales = cuotasDraft.map((c, i) => ({
+    id: c.id || uid(),
+    nro: i + 1,
+    montoUSD: round2(c.montoUSD),
+    dias: c.dias,
+    fechaVencimiento: addDays(fechaVenta, c.dias)
+  }));
+
+  if(editandoId){
+    const v = state.ventas.find(x => x.id === editandoId);
+    const abonado = totalAbonos(v);
+    const nuevoSaldo = round2(montoUSD - inicialUSD);
+    if(abonado > nuevoSaldo + 0.01){
+      return toast(`❌ Los abonos registrados ($${abonado}) superan el nuevo saldo ($${nuevoSaldo})`, 'bad');
+    }
+    v.cliente = cliente;
+    v.articulo = articulo;
+    v.montoTotalUSD = montoUSD;
+    v.montoTotalOriginal = montoOrig;
+    v.monedaOriginal = monedaOrig;
+    v.pagoInicialUSD = inicialUSD;
+    v.pagoInicialOriginal = inicialOrig;
+    v.fechaVenta = fechaVenta;
+    v.cuotas = cuotasFinales;
+
+    const movIni = v.movimientos.find(m => m.tipo === 'INICIAL');
+    if(movIni){ 
+      movIni.montoUSD = inicialUSD; 
+      movIni.montoOriginal = inicialOrig;
+      movIni.monedaOriginal = monedaIni;
+      movIni.tasaAplicada = tasaIni;
+      movIni.fecha = fechaVenta; 
+    }
+    else if(inicialUSD > 0) {
+      v.movimientos.unshift({ id: uid(), tipo: 'INICIAL', montoUSD: inicialUSD, montoOriginal: inicialOrig, monedaOriginal: monedaIni, tasaAplicada: tasaIni, fecha: fechaVenta });
+    }
+    if(inicialUSD <= 0) v.movimientos = v.movimientos.filter(m => m.tipo !== 'INICIAL');
+
+    toast('✅ Venta actualizada', 'ok');
+  } else {
+    state.ventas.unshift({
+      id: uid(), cliente, articulo,
+      montoTotalUSD: montoUSD, 
+      montoTotalOriginal: montoOrig,
+      monedaOriginal: monedaOrig,
+      pagoInicialUSD: inicialUSD,
+      pagoInicialOriginal: inicialOrig,
+      fechaVenta,
+      cuotas: cuotasFinales,
+      movimientos: inicialUSD > 0 ? [{ id: uid(), tipo: 'INICIAL', montoUSD: inicialUSD, montoOriginal: inicialOrig, monedaOriginal: monedaIni, tasaAplicada: tasaIni, fecha: fechaVenta }] : []
+    });
+    toast('✅ Venta registrada', 'ok');
+  }
+
+  save();
+  cerrarModal('modalVenta');
+  render();
+}
+
+/* ================= MODAL: DETALLE ================= */
+let detalleId = null;
+
+function abrirDetalle(id){
+  detalleId = id;
+  const v = state.ventas.find(x => x.id === id);
+  if(!v) return;
+  const r = resumenVenta(v);
+
+  const badge = r.estado === 'VENCIDA' ? 'b-vencida' : r.estado === 'PAGADA' ? 'b-pagada' : 'b-pendiente';
+  const cuotaBadge = e => e === 'PAGADA' ? 'b-pagada' : e === 'VENCIDA' ? 'b-vencida' : e === 'PARCIAL' ? 'b-parcial' : 'b-pendiente';
+
+  let infoOrig = `<div style="margin-top:6px; font-size:12px; color:var(--muted);">
+    Ref: ${fmtMoney(v.montoTotalOriginal, v.monedaOriginal)} (Tasa: ${getTasa(v.monedaOriginal).toFixed(2)})</div>`;
+
+  $('#dTitulo').textContent = (r.estado === 'VENCIDA' ? '⛳ ' : '') + v.cliente;
+  $('#dBody').innerHTML = `
+    <div class="info-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">${esc(v.articulo)} · vendido el ${fmtFecha(v.fechaVenta)}</div>
+          <div style="margin-top:4px; font-size:18px"><b>${fmtMoney(v.montoTotalUSD)} USD</b></div>
+          ${infoOrig}
+        </div>
+        <span class="badge ${badge}">${r.estado}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px;border-top:1px solid var(--border);padding-top:15px">
+        <div><small style="color:var(--muted);font-size:10.5px">PAGO INICIAL</small><div><b style="font-size:14px">${fmtMoney(v.pagoInicialUSD)}</b></div></div>
+        <div><small style="color:var(--muted);font-size:10.5px">ABONOS</small><div><b style="font-size:14px">${fmtMoney(totalAbonos(v))}</b></div></div>
+        <div><small style="color:var(--muted);font-size:10.5px">SALDO</small><div><b style="font-size:14px;color:${r.saldoTotal>0?'var(--warn)':'var(--ok)'}">${fmtMoney(r.saldoTotal)}</b></div></div>
+      </div>
+      ${r.diasRetraso > 0 ? `<div style="margin-top:11px;font-size:12px;color:var(--danger)">⛳ ${r.diasRetraso} día(s) de retraso sobre la cuota más antigua</div>` : ''}
+    </div>
+
+    <div class="sec-title">Cronograma de cuotas (en USD)</div>
+    <table class="tbl">
+      <thead><tr>
+        <th>#</th><th>Vence</th><th class="num">Monto</th>
+        <th class="num">Pagado</th><th class="num">Saldo</th><th>Estado</th>
+      </tr></thead>
+      <tbody>
+        ${r.cuotas.map(c => `
+          <tr style="cursor:default">
+            <td style="color:var(--muted)">${c.nro}</td>
+            <td>${fmtFecha(c.fechaVencimiento)}</td>
+            <td class="num">${fmtMoney(c.montoUSD)}</td>
+            <td class="num" style="color:var(--ok)">${fmtMoney(c.pagado)}</td>
+            <td class="num" style="font-weight:700">${fmtMoney(c.saldo)}</td>
+            <td><span class="badge ${cuotaBadge(c.estado)}">${c.estado}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="sec-title">Historial de pagos</div>
+    ${v.movimientos.length ? `<ul class="movs">
+      ${[...v.movimientos].sort((a,b) => a.fecha.localeCompare(b.fecha)).map(m => `
+        <li>
+          <span>
+            <span class="tipo">${m.tipo === 'INICIAL' ? 'Pago inicial' : 'Abono'}</span> · ${fmtFecha(m.fecha)}
+            ${m.monedaOriginal !== 'USD' ? `<br><span style="font-size:10.5px;color:var(--muted)">${fmtMoney(m.montoOriginal, m.monedaOriginal)} a tasa ${m.tasaAplicada.toFixed(2)}</span>` : ''}
+          </span>
+          <b style="color:var(--ok)">${fmtMoney(m.montoUSD)}</b>
+        </li>`).join('')}
+    </ul>` : `<div class="empty-mini">Sin pagos registrados.</div>`}
+  `;
+
+  $('#btnAbonarDesdeDetalle').disabled = r.saldoTotal <= 0.005;
+  abrirModal('modalDetalle');
+}
+
+/* ================= MODAL: ABONO ================= */
+let abonoVentaId = null;
+
+function actualizarHintAbono() {
+  const uMonto = getMontoUSD('#aMonto', '#aMoneda');
+  $('#hintAbono').textContent = uMonto > 0 ? `≈ $${uMonto.toFixed(2)} USD` : '';
+}
+
+function abrirAbono(id){
+  abonoVentaId = id;
+  const v = state.ventas.find(x => x.id === id);
+  if(!v) return;
+  const r = resumenVenta(v);
+  
+  $('#aInfo').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><b>${esc(v.cliente)}</b><div style="font-size:11.5px;color:var(--muted)">${esc(v.articulo)}</div></div>
+      <div style="text-align:right"><small style="color:var(--muted);font-size:10.5px">SALDO PENDIENTE</small><div><b style="color:var(--warn)">${fmtMoney(r.saldoTotal)}</b></div></div>
+    </div>`;
+  
+  $('#aMonto').value = '';
+  $('#aMoneda').value = 'USD';
+  $('#aFecha').value = todayISO();
+  
+  actualizarHintAbono();
+  renderPreviewAbono();
+  cerrarModal('modalDetalle');
+  abrirModal('modalAbono');
+  setTimeout(() => $('#aMonto').focus(), 80);
+}
+
+function renderPreviewAbono(){
+  const v = state.ventas.find(x => x.id === abonoVentaId);
+  const montoUSD = getMontoUSD('#aMonto', '#aMoneda');
+  const box = $('#aPreview');
+  if(!v){ box.innerHTML = ''; return; }
+  if(montoUSD <= 0){ box.innerHTML = `<div class="empty-mini">Ingresa un monto para ver la aplicación…</div>`; return; }
+
+  const r = resumenVenta(v);
+  let resto = montoUSD;
+  const filas = [];
+  for(const c of r.cuotas){
+    if(resto <= 0.005) break;
+    if(c.saldo <= 0.005) continue;
+    const aplica = round2(Math.min(resto, c.saldo));
+    resto = round2(resto - aplica);
+    filas.push({ c, aplica, nuevoSaldo: round2(c.saldo - aplica) });
+  }
+
+  box.innerHTML = `
+    ${filas.map(f => `
+      <div class="movs" style="margin-bottom:7px">
+        <li style="list-style:none;display:flex;justify-content:space-between">
+          <span>Cuota #${f.c.nro} <span class="tipo">· vence ${fmtFecha(f.c.fechaVencimiento)}</span></span>
+          <span><b style="color:var(--ok)">+${fmtMoney(f.aplica)}</b>
+          <span class="tipo"> → queda ${fmtMoney(f.nuevoSaldo)}</span></span>
+        </li>
+      </div>`).join('')}
+    ${resto > 0.005 ? `<div class="indicador bad" style="font-size:12px">⚠ Excede el saldo pendiente. Máximo aplicable en USD: ${fmtMoney(round2(montoUSD - resto))}</div>` : ''}
+    ${montoUSD > r.saldoTotal + 0.01 ? `<div class="indicador bad" style="font-size:12px">⚠ El abono supera el saldo total (${fmtMoney(r.saldoTotal)})</div>` : ''}
+  `;
+}
+
+function guardarAbono(){
+  const v = state.ventas.find(x => x.id === abonoVentaId);
+  if(!v) return;
+  
+  const montoOrig = round2(num($('#aMonto').value));
+  const monedaOrig = $('#aMoneda').value;
+  const tasa = getTasa(monedaOrig);
+  const montoUSD = round2(montoOrig / tasa);
+  
+  const fecha = $('#aFecha').value || todayISO();
+  const r = resumenVenta(v);
+
+  if(montoUSD <= 0) return toast('⚠ El monto debe ser mayor a 0', 'bad');
+  if(montoUSD > r.saldoTotal + 0.01) return toast(`⚠ El abono supera el saldo pendiente (${fmtMoney(r.saldoTotal)} USD)`, 'bad');
+
+  v.movimientos.push({ 
+    id: uid(), 
+    tipo: 'ABONO', 
+    montoUSD: montoUSD, 
+    montoOriginal: montoOrig,
+    monedaOriginal: monedaOrig,
+    tasaAplicada: tasa,
+    fecha 
+  });
+  
+  const nuevo = resumenVenta(v);
+
+  save();
+  cerrarModal('modalAbono');
+  render();
+
+  if(nuevo.saldoTotal <= 0.005) toast('🎉 ¡Venta pagada en su totalidad!', 'ok');
+  else toast(`✅ Abono registrado: ${fmtMoney(montoOrig, monedaOrig)} = ${fmtMoney(montoUSD)}`, 'ok');
+}
+
+/* ================= MODAL: TASAS ================= */
+function abrirModalTasas() {
+  $('#tasaVES').value = state.tasas.VES;
+  $('#tasaCOP').value = state.tasas.COP;
+  abrirModal('modalTasas');
+}
+function guardarTasas() {
+  const v = round2(num($('#tasaVES').value));
+  const c = round2(num($('#tasaCOP').value));
+  if(v <= 0 || c <= 0) return toast('⚠ Las tasas deben ser mayores a 0', 'bad');
+  
+  state.tasas.VES = v;
+  state.tasas.COP = c;
+  save();
+  cerrarModal('modalTasas');
+  render();
+  toast('✅ Tasas actualizadas', 'ok');
+}
+
+/* ================= MODALES GENÉRICOS ================= */
+function abrirModal(id){ $('#' + id).classList.add('open'); }
+function cerrarModal(id){ $('#' + id).classList.remove('open'); }
+
+/* ================= TOASTS ================= */
+function toast(msg, tipo = ''){
+  const t = document.createElement('div');
+  t.className = 'toast ' + tipo;
+  t.textContent = msg;
+  $('#toasts').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(30px)'; t.style.transition = '.3s'; }, 2600);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* ================= TEMA ================= */
+function aplicarTema(){
+  document.documentElement.dataset.theme = state.theme;
+  $('#btnTheme').textContent = state.theme === 'dark' ? '☀️' : '🌙';
+}
+
+/* ================= SELLO DE ACTUALIZACIÓN ================= */
+function actualizarSello(){
+  const d = new Date();
+  $('#sello').textContent = 'Actualizado: ' + d.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'});
+}
+
+/* ================= RENDER GLOBAL ================= */
+let tabActual = 'todos';
+let busqueda = '';
+
+function render(){
+  renderKPIs();
+  renderLista();
+  renderCobranza();
+
+  const morosos = state.ventas.filter(v => resumenVenta(v).estado === 'VENCIDA').length;
+  $('#tabVencidos').innerHTML = '⛳ Vencidos' + (morosos ? `<span class="pill">${morosos}</span>` : '');
+  actualizarSello();
+}
+
+/* ================= EVENTOS ================= */
+// Tema
+$('#btnTheme').addEventListener('click', () => {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  aplicarTema(); save();
+});
+
+// Refrescar estados
+$('#btnRefresh').addEventListener('click', () => {
+  render();
+  toast('🔄 Estados recalculados con la fecha de hoy', 'ok');
+});
+
+// Exportaciones
+$('#btnCSV').addEventListener('click', exportarCSV);
+$('#btnPDF').addEventListener('click', generarReportePDF);
+$('#btnRespaldo').addEventListener('click', () => abrirModal('modalRespaldo'));
+$('#btnManual').addEventListener('click', () => abrirModal('modalManual'));
+
+// Respaldo
+$('#btnDescargarBackup').addEventListener('click', descargarRespaldo);
+$('#btnRestaurarLabel').addEventListener('click', () => $('#fileRestore').click());
+$('#fileRestore').addEventListener('change', restaurarRespaldo);
+
+// Tasas
+$('#btnTasas').addEventListener('click', abrirModalTasas);
+$('#btnGuardarTasas').addEventListener('click', guardarTasas);
+
+// Nueva venta
+$('#btnNueva').addEventListener('click', () => abrirModalVenta(null));
+
+// Tabs
+$$('.tab').forEach(b => b.addEventListener('click', () => {
+  tabActual = b.dataset.tab;
+  $$('.tab').forEach(x => x.classList.toggle('active', x === b));
+  render();
+}));
+
+// Buscador
+$('#buscar').addEventListener('input', e => { busqueda = e.target.value; renderLista(); });
+
+// Filtros de Cobranza
+$('#cobDesde').addEventListener('change', renderCobranza);
+$('#cobHasta').addEventListener('change', renderCobranza);
+$('#btnLimpiarFiltro').addEventListener('click', () => {
+  $('#cobDesde').value = '';
+  $('#cobHasta').value = '';
+  renderCobranza();
+});
+
+// Cerrar modales
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-close]');
+  if(c) cerrarModal(c.dataset.close);
+  if(e.target.classList.contains('modal')) cerrarModal(e.target.id);
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') $$('.modal.open').forEach(m => m.classList.remove('open'));
+});
+
+// Formulario de venta (Cambios en montos/monedas)
+['#fMonto', '#fInicial', '#fMoneda', '#fMonedaInicial', '#fNCuotas', '#fFecha', '#fPeriodo', '#fPeriodoCustom'].forEach(sel => {
+  $(sel).addEventListener('input', () => {
+    if($('#fPeriodo').value === 'custom') $('#wrapCustom').hidden = false;
+    else $('#wrapCustom').hidden = true;
+    
+    actualizarHints();
+    
+    if(cuotasPristine){ generarCuotas(); renderCuotasDraft(); }
+    actualizarIndicador();
+  });
+});
+$('#btnGenerar').addEventListener('click', () => {
+  generarCuotas(); renderCuotasDraft(); actualizarIndicador();
+  toast('⚙️ Cuotas regeneradas');
+});
+
+// Edición manual de cuotas
+$('#listaCuotasDraft').addEventListener('input', e => {
+  const row = e.target.closest('.cuota-row');
+  if(!row) return;
+  const i = +row.dataset.i;
+  if(e.target.classList.contains('inp-monto')){
+    cuotasDraft[i].montoUSD = round2(num(e.target.value));
+    cuotasPristine = false;
+    actualizarIndicador();
+  } else if(e.target.classList.contains('inp-dias')){
+    const d = Math.max(1, parseInt(e.target.value) || 1);
+    cuotasDraft[i].dias = d;
+    cuotasDraft[i].fechaVencimiento = addDays($('#fFecha').value || todayISO(), d);
+    row.querySelector('.cuota-fecha').textContent = fmtFecha(cuotasDraft[i].fechaVencimiento);
+    cuotasPristine = false;
+  }
+});
+
+$('#btnGuardarVenta').addEventListener('click', guardarVenta);
+
+// Detalle
+$('#btnEditar').addEventListener('click', () => {
+  const id = detalleId;
+  cerrarModal('modalDetalle');
+  abrirModalVenta(id);
+});
+$('#btnEliminar').addEventListener('click', () => {
+  const v = state.ventas.find(x => x.id === detalleId);
+  if(!v) return;
+  if(!confirm(`¿Eliminar la venta de "${v.cliente}"?\n\nSe borrarán también sus ${v.movimientos.length} pago(s) registrados. Esta acción no se puede deshacer.`)) return;
+  state.ventas = state.ventas.filter(x => x.id !== detalleId);
+  save(); cerrarModal('modalDetalle'); render();
+  toast('🗑 Venta eliminada', 'bad');
+});
+$('#btnImprimir').addEventListener('click', imprimirRecordatorio);
+$('#btnAbonarDesdeDetalle').addEventListener('click', () => abrirAbono(detalleId));
+
+// Abono
+$('#aMonto').addEventListener('input', () => { actualizarHintAbono(); renderPreviewAbono(); });
+$('#aMoneda').addEventListener('change', () => { actualizarHintAbono(); renderPreviewAbono(); });
+$('#btnGuardarAbono').addEventListener('click', guardarAbono);
+
+// Re-calcular al volver a la pestaña
+document.addEventListener('visibilitychange', () => { if(!document.hidden) render(); });
+window.addEventListener('focus', render);
+
+/* ================= INICIALIZACIÓN ================= */
+load();
+aplicarTema();
+render();
+</script>
+</body>
+</html>
